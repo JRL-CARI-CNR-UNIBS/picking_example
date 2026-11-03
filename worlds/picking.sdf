@@ -1,0 +1,136 @@
+<?xml version="1.0"?>
+<!-- Sharework cell world for the pick and place example: the world of
+     sharework_gazebo plus objects on the rail of the table and a basket.
+     The cell itself (floor, portal, table, rail) comes with the robot description.
+     Rail top: z = 0.895 (table) + 0.12 (rail) = 1.015, x in [0.12, 0.48], y in [-1.61, 1.61].
+     The graspable objects must be listed in config/objects.yaml too. -->
+<sdf version="1.9">
+  <world name="sharework_cell">
+    <!-- 1 kHz physics, as the controllers run at 500 Hz. -->
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <gravity>0 0 -9.81</gravity>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
+
+    <scene>
+      <ambient>0.6 0.6 0.6 1</ambient>
+      <background>0.8 0.8 0.8 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Outside the cell only: the cell has its own floor. -->
+    <model name="ground_plane">
+      <static>true</static>
+      <pose>0 0 -0.02 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============ Objects to pick (COCO classes: cup, bowl) ============
+         Gazebo Fuel models (downloaded at the first start, cached in ~/.gz/fuel).
+         Mesh origins are at the bottom of the objects: they are dropped 5 mm
+         above the rail. -->
+    <include>
+      <name>mug_blue</name>
+      <uri>https://fuel.gazebosim.org/1.0/GoogleResearch/models/Cole_Hardware_Mug_Classic_Blue</uri>
+      <pose>0.27 -0.42 1.02 0 0 0.5</pose>
+    </include>
+
+    <include>
+      <name>mug_white</name>
+      <uri>https://fuel.gazebosim.org/1.0/GoogleResearch/models/Threshold_Porcelain_Coffee_Mug_All_Over_Bead_White</uri>
+      <pose>0.33 -0.12 1.02 0 0 -0.8</pose>
+    </include>
+
+    <include>
+      <name>bowl</name>
+      <uri>https://fuel.gazebosim.org/1.0/GoogleResearch/models/Threshold_Bead_Cereal_Bowl_White</uri>
+      <pose>0.30 0.18 1.02 0 0 0</pose>
+    </include>
+
+    <!-- ============ Basket ============
+         Inner size 0.28 x 0.30 x 0.12 m, center of the bottom at (0.30, 0.62, 1.015).
+         Keep in sync with the basket parameters of config/pick_and_place.yaml. -->
+    <model name="basket">
+      <static>true</static>
+      <pose>0.30 0.62 1.015 0 0 0</pose>
+      <link name="link">
+        <!-- bottom -->
+        <collision name="bottom_c">
+          <pose>0 0 0.005 0 0 0</pose>
+          <geometry><box><size>0.30 0.32 0.01</size></box></geometry>
+        </collision>
+        <visual name="bottom_v">
+          <pose>0 0 0.005 0 0 0</pose>
+          <geometry><box><size>0.30 0.32 0.01</size></box></geometry>
+          <material><ambient>0.45 0.3 0.15 1</ambient><diffuse>0.55 0.37 0.2 1</diffuse></material>
+        </visual>
+        <!-- walls along y (at x = +-0.145) -->
+        <collision name="wall_xp_c">
+          <pose>0.145 0 0.065 0 0 0</pose>
+          <geometry><box><size>0.01 0.32 0.13</size></box></geometry>
+        </collision>
+        <visual name="wall_xp_v">
+          <pose>0.145 0 0.065 0 0 0</pose>
+          <geometry><box><size>0.01 0.32 0.13</size></box></geometry>
+          <material><ambient>0.45 0.3 0.15 1</ambient><diffuse>0.55 0.37 0.2 1</diffuse></material>
+        </visual>
+        <collision name="wall_xm_c">
+          <pose>-0.145 0 0.065 0 0 0</pose>
+          <geometry><box><size>0.01 0.32 0.13</size></box></geometry>
+        </collision>
+        <visual name="wall_xm_v">
+          <pose>-0.145 0 0.065 0 0 0</pose>
+          <geometry><box><size>0.01 0.32 0.13</size></box></geometry>
+          <material><ambient>0.45 0.3 0.15 1</ambient><diffuse>0.55 0.37 0.2 1</diffuse></material>
+        </visual>
+        <!-- walls along x (at y = +-0.155) -->
+        <collision name="wall_yp_c">
+          <pose>0 0.155 0.065 0 0 0</pose>
+          <geometry><box><size>0.28 0.01 0.13</size></box></geometry>
+        </collision>
+        <visual name="wall_yp_v">
+          <pose>0 0.155 0.065 0 0 0</pose>
+          <geometry><box><size>0.28 0.01 0.13</size></box></geometry>
+          <material><ambient>0.45 0.3 0.15 1</ambient><diffuse>0.55 0.37 0.2 1</diffuse></material>
+        </visual>
+        <collision name="wall_ym_c">
+          <pose>0 -0.155 0.065 0 0 0</pose>
+          <geometry><box><size>0.28 0.01 0.13</size></box></geometry>
+        </collision>
+        <visual name="wall_ym_v">
+          <pose>0 -0.155 0.065 0 0 0</pose>
+          <geometry><box><size>0.28 0.01 0.13</size></box></geometry>
+          <material><ambient>0.45 0.3 0.15 1</ambient><diffuse>0.55 0.37 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

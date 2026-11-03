@@ -1,0 +1,9 @@
+# Graspable objects of worlds/picking.sdf.
+# name: model name in the world (keep in sync with the <include> names).
+# link: link of the model held by the DetachableJoint (Fuel GoogleResearch models: link_0).
+# Read by urdf/sharework_picking.urdf.xacro (one DetachableJoint each) and by
+# sim_grasp_manager. Adding an object: add its <include> to the world and a line here.
+objects:
+  - {name: mug_blue,  link: link_0}
+  - {name: mug_white, link: link_0}
+  - {name: bowl,      link: link_0}

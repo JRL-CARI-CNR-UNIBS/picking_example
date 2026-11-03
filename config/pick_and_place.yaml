@@ -1,0 +1,59 @@
+# Parameters of the pick_and_place node (defaults in picking_example/pick_and_place.py).
+pick_and_place:
+  ros__parameters:
+    use_sim_time: true
+    ik_solver_ns: ur_ik_solver
+    planner_action: /parallel_multigoal_plan
+    time_parametrization_action: /compute_joint_trajectory
+    trajectory_action: /joint_trajectory_controller/follow_joint_trajectory
+    gripper_action: /robotiq_gripper_controller/gripper_cmd
+    scene_db: /scene_db
+    collision_check_service: /collision_check   # only to explain IK failures in the log
+    wrist_updater: /scene_updater_wrist
+    fixed_updater: ""                 # "/scene_updater_fixed" with services.launch.py fixed_camera:=zed
+
+    fixed_frame: world
+    base_frame: ur10e_base_link       # = ik_solver base_frame
+    flange_frame: ur10e_tool0         # = ik_solver tool_frame
+    tcp_frame: open_tip
+    camera_frame: wrist_color_optical_frame
+
+    planning_time: 5.0                # [s] per request
+    velocity_scaling: 0.5
+    acceleration_scaling: 0.5
+    approach_velocity_scaling: 0.1    # approach, lift, retreat
+
+    # Observation: wrist camera at (x, y, z) looking at (x, y, z), 6 values per point.
+    # Oblique views from the robot side: YOLO (COCO) does not recognize cups from
+    # above. Rolls about the optical axis are alternative goals; keep them small,
+    # YOLO wants upright images.
+    observation_points: [-0.12, -0.27, 1.45, 0.30, -0.27, 1.04,
+                         -0.12,  0.45, 1.45, 0.30,  0.15, 1.04]   # not under the robot base: out of reach
+    observation_rolls_deg: [0.0, -20.0, 20.0]
+    # Close views for VGN around the object: (tilt, azimuth) pairs in degrees.
+    grasp_view_distance: 0.40
+    grasp_views_deg: [0.0, 0.0, 35.0, 90.0, 35.0, 270.0]
+    grasp_view_rolls_deg: [0.0, 90.0, 180.0, 270.0]   # any roll: VGN uses depth only
+    clear_scene_on_start: true
+
+    # Objects whose box center is in this region are picked (xmin, xmax, ymin, ymax, zmin, zmax).
+    pick_region: [0.10, 0.50, -0.70, 0.42, 0.95, 1.40]
+    support_z: 1.015                  # rail top
+    max_grasp_candidates: 10          # grasps sent to the planner (x2: the gripper is symmetric)
+    min_grasp_score: 0.0
+    max_grasp_width: 0.085            # Robotiq 2F-85
+    min_approach_down: 0.5            # approach at most 60 deg from the vertical
+    grasp_depth_offset: 0.0           # [m] fingertips beyond Grasp.depth
+    pregrasp_distance: 0.10
+    lift_height: 0.15
+    max_attempts_per_object: 2
+    max_cycles: 20
+
+    # Basket of worlds/picking.sdf
+    basket_center: [0.30, 0.62, 1.015]
+    basket_size: [0.30, 0.32, 0.13]
+    basket_wall: 0.01
+    place_clearance: 0.05
+    place_yaws_deg: [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]
+    retreat_height: 0.10
+    scene_settle_time: 0.5            # [s] collision_checker_server reads the scene at 10 Hz

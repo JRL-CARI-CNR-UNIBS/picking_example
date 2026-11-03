@@ -1,0 +1,18 @@
+# ros_gz_bridge for the wrist RealSense (Gazebo -> ROS), RealSense driver layout
+# with align_depth: Gazebo renders color and depth with the same intrinsics,
+# so the depth image is already aligned to the color image.
+- ros_topic_name: /wrist/color/image_raw
+  gz_topic_name: /wrist/image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+- ros_topic_name: /wrist/color/camera_info
+  gz_topic_name: /wrist/camera_info
+  ros_type_name: sensor_msgs/msg/CameraInfo
+  gz_type_name: gz.msgs.CameraInfo
+  direction: GZ_TO_ROS
+- ros_topic_name: /wrist/aligned_depth_to_color/image_raw
+  gz_topic_name: /wrist/depth_image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS

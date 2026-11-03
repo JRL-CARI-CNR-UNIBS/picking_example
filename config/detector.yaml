@@ -1,0 +1,22 @@
+# yolo_rgbd_detector parameters for the simulation (rendered objects: lower
+# confidence threshold than on camera images).
+yolo_rgbd_detector:
+  ros__parameters:
+    model: "yolo11s-seg.pt"     # the nano model misses the rendered cups
+    device: ""
+    confidence_threshold: 0.35
+    iou_threshold: 0.45
+    image_size: 640
+    use_mask: true
+    roi_scale: 0.5
+    min_depth: 0.1
+    max_depth: 3.0
+    depth_scale: 0.0           # Gazebo depth is 32FC1 in meters
+    min_depth_band: 0.03
+    min_points: 20
+    exclude_occluders: true
+    box_mode: "yaw"
+    merge_distance: 0.1
+    merge_size_factor: 0.5
+    tf_timeout: 0.5
+    publish_debug: true

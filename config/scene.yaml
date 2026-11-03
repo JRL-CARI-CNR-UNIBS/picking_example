@@ -1,0 +1,49 @@
+# scene_db and scene_updater parameters (see scene_db/docs/API.md).
+# Two updaters write to the same database:
+# - scene_updater_wrist: wrist RealSense, objects (acquire) and grasps from close
+#   views (capture_view + acquire_grasps, VGN multiview);
+# - scene_updater_fixed: optional, a fixed camera of the cell (zed, rs1, rs2), objects only.
+scene_db:
+  ros__parameters:
+    fixed_frame: "world"
+    publish_markers: true
+
+/**/scene_updater_wrist:
+  ros__parameters:
+    fixed_frame: "world"
+    detect_service: "/yolo_rgbd_detector/detect"
+    grasp_service: "/mock_grasp_server/detect_grasps"   # not used: acquire is called without grasps
+    multiview_grasp_service: "/vgn_grasp_server/multiview_detect_grasps"
+    scene_db: "/scene_db"
+    timeout: 30.0                         # [s] per step: the first YOLO and VGN calls are slow
+    sync_slop: 0.05
+    classes: ["cup", "bowl"]
+    no_grasp_classes: [""]
+    max_grasps_per_object: 20
+    grasp_volume_margin: 0.05             # [m] around the object box
+    grasp_volume_below: 0.05              # [m] VGN: table ~5 cm above the volume floor
+    grasp_volume_height: 0.30             # [m] VGN: 0.30
+    object_grasp_margin: 0.03
+    max_views: 20
+    min_grasp_score: 0.0                  # 0 = vgn quality_threshold
+    association_distance: 0.15
+    association_size_factor: 0.5
+    move_threshold: 0.03
+    move_size_factor: 0.2
+    match_color: false
+
+/**/scene_updater_fixed:
+  ros__parameters:
+    fixed_frame: "world"
+    detect_service: "/yolo_rgbd_detector/detect"
+    grasp_service: "/mock_grasp_server/detect_grasps"   # not used
+    scene_db: "/scene_db"
+    timeout: 30.0
+    sync_slop: 0.05
+    classes: ["cup", "bowl"]
+    no_grasp_classes: [""]
+    association_distance: 0.15
+    association_size_factor: 0.5
+    move_threshold: 0.03
+    move_size_factor: 0.2
+    match_color: false

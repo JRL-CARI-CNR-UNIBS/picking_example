@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!-- The Sharework cell in Gazebo for the pick and place example:
+     the description of sharework_gazebo plus
+     - a RealSense on the wrist (camera "wrist", RealSense driver frame names),
+     - one DetachableJoint per graspable object, used by sim_grasp_manager to
+       hold the object while the gripper is closed.
+     Load it with: ros2 launch sharework_gazebo sharework_gazebo.launch.py description_file:=<this file> -->
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="sharework_cell">
+
+  <!-- Graspable objects: same names as the models in the world -->
+  <xacro:arg name="objects_file" default="$(find picking_example)/config/objects.yaml"/>
+
+  <xacro:include filename="$(find sharework_gazebo)/urdf/sharework_cell_gz.urdf.xacro"/>
+
+  <!-- ===================== Wrist RealSense ===================== -->
+  <!-- Calibration of the inclined mounting on the real cell (ur10e_tool0 -> wrist_link):
+       xyz 0.00648373 -0.0742079 0.0741869, quaternion 0.271469 -0.27528 0.644284 0.659866.
+       The camera looks at the fingertips, 45 deg from the approach axis. -->
+  <link name="wrist_link">
+    <visual>
+      <origin xyz="-0.0125 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.025 0.09 0.025"/></geometry>
+      <material name="RealSenseGrey"><color rgba="0.6 0.6 0.6 1"/></material>
+    </visual>
+    <!-- No collision: the SRDF does not know this link, MoveIt would report
+         a self collision with the wrist. -->
+    <inertial>
+      <mass value="0.072"/>
+      <inertia ixx="0.00005" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00005"/>
+    </inertial>
+  </link>
+  <joint name="wrist_camera_joint" type="fixed">
+    <parent link="ur10e_tool0"/>
+    <child link="wrist_link"/>
+    <origin xyz="0.00648373 -0.0742079 0.0741869" rpy="0.00506333 -0.79391332 1.54477834"/>
+  </joint>
+
+  <!-- Aligned depth and color share this frame, as with align_depth on the real camera -->
+  <link name="wrist_color_optical_frame"/>
+  <joint name="wrist_color_optical_joint" type="fixed">
+    <parent link="wrist_link"/>
+    <child link="wrist_color_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
+  </joint>
+
+  <xacro:if value="$(arg sim_cameras)">
+    <!-- D435 color: 69 deg horizontal field of view. Gazebo topics wrist/image,
+         wrist/depth_image, wrist/camera_info (config/gz_bridge_wrist.yaml). -->
+    <xacro:sharework_sim_rgbd_camera name="wrist" link="wrist_link" optical_frame="wrist_color_optical_frame"
+                                     width="848" height="480" hfov="1.204" rate="15" near="0.1" far="3.0"/>
+  </xacro:if>
+
+  <!-- ===================== Grasp in simulation ===================== -->
+  <!-- DetachableJoint from the wrist (the gripper base is merged into
+       ur10e_wrist_3_link by the URDF to SDF conversion) to each object.
+       Gazebo attaches the joint when it loads the plugin: sim_grasp_manager
+       detaches every object at startup and attaches one while it is held.
+       Topics: /picking/<object>/attach, /picking/<object>/detach (gz.msgs.Empty),
+       /picking/<object>/state ("attached" / "detached"). -->
+  <xacro:macro name="picking_detachable_joints" params="objects">
+    <xacro:if value="${len(objects) > 0}">
+      <xacro:property name="obj" value="${objects[0]}"/>
+      <gazebo>
+        <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
+          <parent_link>ur10e_wrist_3_link</parent_link>
+          <child_model>${obj['name']}</child_model>
+          <child_link>${obj['link']}</child_link>
+          <attach_topic>/picking/${obj['name']}/attach</attach_topic>
+          <detach_topic>/picking/${obj['name']}/detach</detach_topic>
+          <output_topic>/picking/${obj['name']}/state</output_topic>
+          <suppress_child_warning>true</suppress_child_warning>
+        </plugin>
+      </gazebo>
+      <xacro:picking_detachable_joints objects="${objects[1:]}"/>
+    </xacro:if>
+  </xacro:macro>
+  <xacro:picking_detachable_joints objects="${xacro.load_yaml('$(arg objects_file)')['objects']}"/>
+
+</robot>

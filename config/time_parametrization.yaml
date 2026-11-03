@@ -1,0 +1,12 @@
+# Time parametrization (MoveIt TOTG) of the paths of parallel_multigoal_planner.
+compute_joint_trajectory:
+  ros__parameters:
+    action_name: compute_joint_trajectory    # i.e. /compute_joint_trajectory
+    robot_description_param: robot_description
+    default_group_name: ur_robot
+    use_sim_time: true
+    group_configs_yaml: |
+      - group_name: "ur_robot"
+        resample_dt: 0.01          # [s] sampling time of the output trajectory
+        path_tolerance: 0.001      # [rad] blending tolerance of TOTG
+        min_angle_change: 0.001    # [rad] closer points are merged

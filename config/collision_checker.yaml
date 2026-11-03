@@ -1,0 +1,8 @@
+# collision_checker_server: checks IK solutions and tree edges of
+# parallel_multigoal_planner against the planning scene of move_group.
+ik_collision_check:
+  ros__parameters:
+    group_name: "ur_robot"
+    padding: 0.01      # [m] on every robot link
+    scaling: 1.0
+    use_sim_time: true
