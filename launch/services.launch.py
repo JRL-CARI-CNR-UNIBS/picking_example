@@ -31,12 +31,10 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription,
-                            OpaqueFunction, RegisterEventHandler)
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition
-from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import FindExecutable, LaunchConfiguration
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from moveit_configs_utils import MoveItConfigsBuilder
 import yaml
@@ -68,13 +66,6 @@ def _setup(context):
         joint_limits = {'robot_description_planning': yaml.safe_load(f)}
 
     # --- Motion: ik_solver -> collision_checker_server -> parallel_multigoal_planner
-    # cnr_param_server instances must not run together (shared parameter
-    # directory): mirrt* parameters first, then the ik_solver launch loads its own.
-    mirrt_star_params = ExecuteProcess(
-        cmd=[FindExecutable(name='cnr_param_server'), '--path-to-file',
-             os.path.join(config, 'mirrt_star.yaml')],
-        output='screen',
-    )
     ik_solver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             get_package_share_directory('ik_solver'), 'launch', 'ik_solver.launch.py')),
@@ -92,7 +83,8 @@ def _setup(context):
         executable='parallel_multigoal_planner_node',
         name='parallel_multigoal_planner',
         output='screen',
-        parameters=[{'ik_solver_ns': 'ur_ik_solver',
+        parameters=[os.path.join(config, 'mirrt_star.yaml'),
+                    {'ik_solver_ns': 'ur_ik_solver',
                      'collision_check_service': '/collision_check',
                      'service_timeout_s': 20.0}],
     )
@@ -134,9 +126,7 @@ def _setup(context):
                     ('depth/image_raw', '/wrist/aligned_depth_to_color/image_raw'),
                     ('color/camera_info', '/wrist/color/camera_info')],
     )
-    nodes = [detector, scene_db, wrist_updater, time_parametrization, mirrt_star_params,
-             RegisterEventHandler(OnProcessExit(target_action=mirrt_star_params,
-                                                on_exit=[ik_solver, collision_checker, planner]))]
+    nodes = [detector, scene_db, wrist_updater, time_parametrization, ik_solver, collision_checker, planner]
 
     fixed = LaunchConfiguration('fixed_camera').perform(context)
     if fixed:
