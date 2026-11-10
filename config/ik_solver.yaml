@@ -1,35 +1,37 @@
-# ik_solver configuration (cnr_param). The first-level key is the namespace of
-# the ik_solver node, i.e. parameter ik_solver_ns of parallel_multigoal_planner.
+# ik_solver configuration (ROS 2 parameters of ik_solver_node). Each first-level key
+# /<namespace>/ik_solver_node starts one ik_solver_node in <namespace> (ik_solver.launch.py);
+# the namespace is the parameter ik_solver_ns of parallel_multigoal_planner.
 # The planner sends the Cartesian goals in base_frame, for tool_frame: the
 # pick and place node computes ur10e_tool0 poses from the TCP and camera poses.
-ur_ik_solver:
-  type: ik_solver/Ur10eIkSolver
-  base_frame: ur10e_base_link
-  flange_frame: ur10e_tool0
-  tool_frame: ur10e_tool0
-  desired_solutions: 32
-  joint_names:
-  - ur10e_shoulder_pan_joint
-  - ur10e_shoulder_lift_joint
-  - ur10e_elbow_joint
-  - ur10e_wrist_1_joint
-  - ur10e_wrist_2_joint
-  - ur10e_wrist_3_joint
+/ur_ik_solver/ik_solver_node:
+  ros__parameters:
+    type: ik_solver/Ur10eIkSolver
+    base_frame: ur10e_base_link
+    flange_frame: ur10e_tool0
+    tool_frame: ur10e_tool0
+    desired_solutions: 32
+    joint_names:
+    - ur10e_shoulder_pan_joint
+    - ur10e_shoulder_lift_joint
+    - ur10e_elbow_joint
+    - ur10e_wrist_1_joint
+    - ur10e_wrist_2_joint
+    - ur10e_wrist_3_joint
 
-  min_stall_iterations: 100
-  max_stall_iterations: 1000
-  parallel_ik_mode: 2
+    min_stall_iterations: 100
+    max_stall_iterations: 1000
+    parallel_ik_mode: 2
 
-  # Keep one configuration among those that differ by 2*pi on a joint, the
-  # closest to initial_conf (the SRDF "home" state).
-  filter_duplicates: true
-  initial_conf: [1.5707, -2.4434, 2.4434, -1.5707, 1.5707, 0.0]
+    # Keep one configuration among those that differ by 2*pi on a joint, the
+    # closest to initial_conf (the SRDF "home" state).
+    filter_duplicates: true
+    initial_conf: [1.5707, -2.4434, 2.4434, -1.5707, 1.5707, 0.0]
 
-  # Each goal is also solved rotated about the tool z axis (the approach of
-  # the gripper, which is symmetric): +-15 deg.
-  task_redundant:
-    type: grid
-    yaw:
-      min: -0.2618
-      max: 0.2618
-      step: 0.2618
+    # Each goal is also solved rotated about the tool z axis (the approach of
+    # the gripper, which is symmetric): +-15 deg.
+    task_redundant:
+      type: grid
+      yaw:
+        min: -0.2618
+        max: 0.2618
+        step: 0.2618
