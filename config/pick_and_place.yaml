@@ -39,6 +39,11 @@ pick_and_place:
     # Objects whose box center is in this region are picked (xmin, xmax, ymin, ymax, zmin, zmax).
     pick_region: [0.10, 0.50, -0.70, 0.42, 0.95, 1.40]
     support_z: 1.015                  # rail top
+    # Keep-out box on the work surface while the camera observes the table and
+    # takes the grasp views (the cups are not in the MoveIt scene yet, or only
+    # partially); removed before the pre-grasp. xmin, xmax, ymin, ymax.
+    search_box_region: [0.10, 0.50, -0.70, 0.42]
+    search_box_height: 0.15           # [m] above support_z; 0 = no box
     max_grasp_candidates: 10          # grasps sent to the planner (x2: the gripper is symmetric)
     min_grasp_score: 0.0
     max_grasp_width: 0.085            # Robotiq 2F-85

@@ -62,7 +62,7 @@ the gripper action, as on the real cell.
 
 ### Wrist camera
 
-A RealSense on `ur10e_tool0` with the calibration of the real cell (frames
+A RealSense on `ur10e_tool0` (from `sharework_gazebo`) with the calibration of the real cell (frames
 `wrist_link`, `wrist_color_optical_frame`; topics `/wrist/color/image_raw`,
 `/wrist/aligned_depth_to_color/image_raw`, `/wrist/color/camera_info`). It is
 inclined by 45° and looks at the fingertips; observation and grasp views are
@@ -143,7 +143,6 @@ Useful while it runs: `ros2 run scene_db cli list`. The RViz of
 | `config/vgn.yaml` | `vgn_grasp_server` |
 | `config/ik_solver.yaml` | `ur_ik_solver`: `ur10e_base_link` → `ur10e_tool0`, ±15° about the tool axis |
 | `config/mirrt_star.yaml`, `collision_checker.yaml`, `time_parametrization.yaml` | Planner chain |
-| `config/gz_bridge_wrist.yaml` | Wrist camera bridge |
 
 Adding an object: an `<include>` in `worlds/picking.sdf` and a line in
 `config/objects.yaml` (YOLO with COCO weights only knows COCO classes; add the

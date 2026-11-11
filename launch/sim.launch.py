@@ -18,9 +18,9 @@ Gazebo side of the pick and place example.
     ros2 launch picking_example sim.launch.py
 
 The Sharework cell of sharework_gazebo (MoveIt and RViz included) with
-- urdf/sharework_picking.urdf.xacro: wrist RealSense + DetachableJoints,
+- urdf/sharework_picking.urdf.xacro: DetachableJoints (the wrist RealSense and
+  its bridge come with sharework_gazebo),
 - worlds/picking.sdf: objects on the rail and a basket,
-- the bridge of the wrist camera,
 - sim_grasp_manager: holds the object while the gripper is closed on it,
 - RViz with rviz/picking.rviz (MoveIt scene, scene_db objects, VGN grasps,
   wrist camera, YOLO detections).
@@ -31,7 +31,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
-from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -90,16 +89,6 @@ def generate_launch_description():
         }.items(),
     )
 
-    wrist_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        name='wrist_camera_bridge',
-        output='screen',
-        parameters=[{'config_file': os.path.join(share, 'config', 'gz_bridge_wrist.yaml')},
-                    sim_time],
-        condition=IfCondition(LaunchConfiguration('sim_cameras')),
-    )
-
     grasp_manager = Node(
         package='picking_example',
         executable='sim_grasp_manager',
@@ -107,5 +96,5 @@ def generate_launch_description():
         parameters=[{'objects_file': os.path.join(share, 'config', 'objects.yaml')}, sim_time],
     )
 
-    return LaunchDescription(args + [cell, wrist_bridge, grasp_manager,
+    return LaunchDescription(args + [cell, grasp_manager,
                                      OpaqueFunction(function=_rviz)])

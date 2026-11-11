@@ -129,6 +129,10 @@ class PickAndPlace(Node):
             # Picking
             'pick_region': [0.10, 0.50, -0.70, 0.42, 0.95, 1.40],  # xmin..zmax, fixed frame
             'support_z': 1.015,                     # rail top
+            # Keep-out box on the work surface during observation and grasp views,
+            # removed before the pre-grasp. xmin, xmax, ymin, ymax (fixed frame).
+            'search_box_region': [0.10, 0.50, -0.70, 0.42],
+            'search_box_height': 0.15,              # [m] above support_z; 0 = no box
             'max_grasp_candidates': 10,
             'min_grasp_score': 0.0,
             'max_grasp_width': 0.085,
@@ -153,6 +157,7 @@ class PickAndPlace(Node):
         if p['touch_links'] == ['']:
             p['touch_links'] = [
                 'ur10e_tool0', 'ur10e_wrist_3_link', 'robotiq_coupler', 'wrist_link',
+                'wrist_camera_support',
                 'ur10e_robotiq_85_base_link',
                 'ur10e_robotiq_85_left_knuckle_link', 'ur10e_robotiq_85_right_knuckle_link',
                 'ur10e_robotiq_85_left_inner_knuckle_link',
@@ -202,6 +207,7 @@ class PickAndPlace(Node):
         }
         self._joint_names: List[str] = []
         self._scene_ids = set()        # object boxes in the MoveIt scene
+        self._search_box = False       # search_box in the MoveIt scene
         self._attempts = {}            # object id -> failed attempts
         self.log = self.get_logger()
 
@@ -447,6 +453,23 @@ class PickAndPlace(Node):
         scene.world.collision_objects = [co]
         self._apply_scene(scene)
 
+    def _set_search_box(self, present: bool):
+        """Keep-out box over the objects, so that the camera moves do not hit them."""
+        p = self._p
+        h = float(p['search_box_height'])
+        if h <= 0.0 or present == self._search_box:
+            return
+        scene = PlanningScene()
+        if present:
+            x0, x1, y0, y1 = p['search_box_region']
+            scene.world.collision_objects = [self._box(
+                'search_box', (0.5 * (x0 + x1), 0.5 * (y0 + y1), p['support_z'] + 0.5 * h),
+                0.0, (x1 - x0, y1 - y0, h))]
+        else:
+            scene.world.collision_objects = [self._remove_msg('search_box')]
+        self._apply_scene(scene)
+        self._search_box = present
+
     def _sync_scene(self, objects, exclude=()):
         """MoveIt boxes = objects of scene_db (except the ids in exclude)."""
         boxes = [self._object_box(o) for o in objects if o.id not in exclude]
@@ -579,6 +602,7 @@ class PickAndPlace(Node):
         same = self._same_object(obj, objects)
         if len(same) > 1:
             self.log.info(f'{obj.id}: same object as {sorted(same - {obj.id})}')
+        self._set_search_box(False)                   # the gripper goes down to the object
         self._sync_scene(objects, exclude=same)       # the fingers may touch it
         self._move_tcp([c[2] for c in candidates], f'pre-grasp of {obj.id}')
 
@@ -632,10 +656,16 @@ class PickAndPlace(Node):
                 self._detach()
             except TaskError:
                 pass
+        self._set_search_box(False)      # the TCP may be inside it
         try:
             self._translate_tcp((0.0, 0.0, self._p['retreat_height']), 'retreat')
         except TaskError as e:
             self.log.warn(f'Retreat: {e}')
+        # Out of the search box before the next observation adds it again.
+        try:
+            self._move_home()
+        except TaskError as e:
+            self.log.warn(f'Home: {e}')
 
     def run(self):
         p = self._p
@@ -654,6 +684,7 @@ class PickAndPlace(Node):
         placed = []
         for cycle in range(p['max_cycles']):
             self.log.info(f'===== Cycle {cycle + 1}: observing the table =====')
+            self._set_search_box(True)
             self._observe()
             self._sync_scene(self._query())
             obj = self._choose()

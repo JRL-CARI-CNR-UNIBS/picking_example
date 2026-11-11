@@ -14,8 +14,7 @@ Nodes of other packages started by the launch files:
 
 | Node | Package | Launch file |
 |---|---|---|
-| Gazebo, `move_group`, controllers, `robot_state_publisher` | `sharework_gazebo` | `sim.launch.py` |
-| `wrist_camera_bridge` | `ros_gz_bridge` | `sim.launch.py` |
+| Gazebo, `move_group`, controllers, `robot_state_publisher`, camera bridges (wrist included) | `sharework_gazebo` | `sim.launch.py` |
 | `rviz2` (`rviz/picking.rviz`) | `rviz2` | `sim.launch.py` |
 | `yolo_rgbd_detector` | `yolo_rgbd_detector` | `services.launch.py` |
 | `scene_db`, `scene_updater_wrist`, `scene_updater_fixed` | `scene_db` | `services.launch.py` |
@@ -108,6 +107,8 @@ where the name ends with `_deg`.
 |---|---|---|
 | `pick_region` | `[0.10, 0.50, -0.70, 0.42, 0.95, 1.40]` | xmin, xmax, ymin, ymax, zmin, zmax of the box centers to pick |
 | `support_z` | `1.015` | Rail top: object boxes extend down to it |
+| `search_box_region` | `[0.10, 0.50, -0.70, 0.42]` | xmin, xmax, ymin, ymax of a keep-out box on the work surface, present during observation and grasp views, removed before the pre-grasp |
+| `search_box_height` | `0.15` | Height of the keep-out box above `support_z`; `0` = no box |
 | `max_grasp_candidates` | `10` | Best grasps sent to the planner (each also flipped by 180°) |
 | `min_grasp_score` | `0.0` | |
 | `max_grasp_width` | `0.085` | Robotiq 2F-85 |
@@ -188,12 +189,12 @@ of `config/objects.yaml`; this node drives them.
 `urdf/sharework_picking.urdf.xacro` (passed to `sharework_gazebo` with
 `description_file`, and to MoveIt, collision checker and RViz):
 
-- includes `sharework_cell_gz.urdf.xacro` of `sharework_gazebo`;
-- `wrist_link` on `ur10e_tool0` (xyz `0.00648373 -0.0742079 0.0741869`,
+- includes `sharework_cell_gz.urdf.xacro` of `sharework_gazebo`, which has the
+  wrist RealSense: `wrist_link` on `ur10e_tool0` (xyz `0.00648373 -0.0742079 0.0741869`,
   quaternion `0.271469 -0.27528 0.644284 0.659866`), `wrist_color_optical_frame`;
-- Gazebo RGB-D camera `wrist` (848×480, hfov 69°, 0.1–3 m), bridged to
+  Gazebo RGB-D camera `wrist` (848×480, hfov 69°, 0.1–3 m), bridged to
   `/wrist/color/image_raw`, `/wrist/color/camera_info`,
-  `/wrist/aligned_depth_to_color/image_raw` (`config/gz_bridge_wrist.yaml`);
+  `/wrist/aligned_depth_to_color/image_raw`, `/wrist/depth/color/points`;
 - one `DetachableJoint` per object of `config/objects.yaml` (args `sim_cameras`).
 
 `worlds/picking.sdf`: the Sharework world plus
@@ -228,7 +229,6 @@ of `config/objects.yaml`; this node drives them.
 |---|---|
 | `config/pick_and_place.yaml` | `pick_and_place` |
 | `config/objects.yaml` | xacro (DetachableJoints), `sim_grasp_manager` |
-| `config/gz_bridge_wrist.yaml` | `wrist_camera_bridge` |
 | `config/scene.yaml` | `scene_db`, `scene_updater_wrist`, `scene_updater_fixed` |
 | `config/detector.yaml` | `yolo_rgbd_detector` |
 | `config/vgn.yaml` | `vgn_grasp_server` |
