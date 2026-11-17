@@ -121,13 +121,67 @@ Useful while it runs: `ros2 run scene_db cli list`. The RViz of
 `/vgn_grasp_server/grasp_markers`, `/wrist/color/image_raw` and
 `/yolo_rgbd_detector/debug_image`.
 
+## Real cell
+
+The same task on the real Sharework cell (ROS 2 Humble on nyquist), without
+Gazebo: `sharework_cembre_bringup` replaces `sim.launch.py` and
+`sim_grasp_manager`, `services_real.launch.py` replaces `services.launch.py`,
+and the parameters come from `config/real/`.
+
+Workspaces on nyquist (same `ROS_DOMAIN_ID`, `rmw_fastrtps_cpp`):
+- `~/projects/planning_ws`, `~/projects/cells_ws`: planner chain, cell bringup;
+- `~/projects/picking_ws` (overlay of the two): `picking_example`, `scene_db`,
+  `scene_msgs`, `grasp_detection_msgs`, `object_detection_msgs`;
+- `~/projects/detector_ws` (pixi, RoboStack Humble, CUDA): `yolo_rgbd_detector`,
+  `vgn_grasp_server`.
+
+```bash
+# 1. Cell (fake_ur:=true fake_gripper:=true: mock hardware, the robot does not move)
+ros2 launch sharework_cembre_bringup sharework_cembre_bringup.launch.py \
+    fake_ur:=false fake_gripper:=false robotiq_use_socket_communication:=true \
+    enable_zed_camera:=false enable_dual_realsense:=false launch_rviz:=true \
+    robotiq_activate_gripper_by_default:=1 enable_wrist_camera:=true
+
+# 2. Detector and VGN (pixi environment)
+CFG=~/projects/picking_ws/install/picking_example/share/picking_example/config/real
+cd ~/projects/detector_ws
+pixi run bash -c "source install/setup.bash && ros2 run yolo_rgbd_detector detector_node \
+    --ros-args -r __node:=yolo_rgbd_detector --params-file $CFG/detector.yaml"
+pixi run bash -c "source install/setup.bash && ros2 launch vgn_grasp_server \
+    vgn_grasp_server.launch.py params_file:=$CFG/vgn.yaml"
+
+# 3. scene_db, updaters, IK, collision checker, planner, time parametrization
+ros2 launch picking_example services_real.launch.py
+
+# 4. The task
+ros2 launch picking_example pick_and_place.launch.py params_file:=$CFG/pick_and_place.yaml
+```
+
+Differences from the simulation (`config/real/pick_and_place.yaml`):
+- trajectories go to `/scaled_fjt_controller/follow_joint_trajectory` (the
+  active controller of the bringup);
+- the gripper is `/robotiq_action_controller/gripper_cmd`, a
+  `control_msgs/GripperCommand` (`gripper_action_type: gripper_command`;
+  Gazebo uses `parallel`, `control_msgs/ParallelGripperCommand`);
+- `velocity_scaling` and `acceleration_scaling` 0.1, `max_cycles` 1: raise them
+  after the first runs;
+- **pick region, support height, observation points, search box and basket
+  are the values of the Gazebo world: measure them on the real table**;
+- YOLO `confidence_threshold` 0.5 (`config/real/detector.yaml`, 0.35 on
+  rendered images): tune it on the camera images.
+
+`services_real.launch.py` starts the `scene_db` nodes with
+`PYTHONNOUSERSITE=1`: a newer scipy in `~/.local` does not work with the numpy
+of Ubuntu 22.04, the system `python3-scipy` does.
+
 ## Launch files
 
 | File | Arguments |
 |---|---|
 | `sim.launch.py` | `gui`, `rviz`, `rviz_config`, `sim_cameras`, `world`, `description_file` |
 | `services.launch.py` | `description_file`, `detector` (`true`), `fixed_camera` (`''`, or `zed`, `rs1`, `rs2`), `database_file`, `start_time_parametrization` (`true`; `false` if `apply_time_parametrization` is already running, e.g. started by `surface_path_planning`) |
-| `pick_and_place.launch.py` | `params_file` |
+| `services_real.launch.py` | `description_file` (`sharework_cembre_description/urdf/sharework_cell.urdf.xacro`), `detector` (`false`), `fixed_camera`, `database_file`, `start_time_parametrization` |
+| `pick_and_place.launch.py` | `params_file` (`config/real/pick_and_place.yaml` on the real cell) |
 
 `sim.launch.py` uses the `description_file` argument of
 `sharework_gazebo.launch.py`.
@@ -143,6 +197,7 @@ Useful while it runs: `ros2 run scene_db cli list`. The RViz of
 | `config/vgn.yaml` | `vgn_grasp_server` |
 | `config/ik_solver.yaml` | `ur_ik_solver`: `ur10e_base_link` → `ur10e_tool0`, ±15° about the tool axis |
 | `config/mirrt_star.yaml`, `collision_checker.yaml`, `time_parametrization.yaml` | Planner chain |
+| `config/real/*.yaml` | Real cell: `pick_and_place`, `detector`, `vgn` (see [Real cell](#real-cell)) |
 
 Adding an object: an `<include>` in `worlds/picking.sdf` and a line in
 `config/objects.yaml` (YOLO with COCO weights only knows COCO classes; add the
