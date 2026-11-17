@@ -23,7 +23,8 @@ Starts, after sim.launch.py (move_group must be running):
 - scene_db, scene_updater_wrist (wrist camera: objects and grasp views) and,
   with fixed_camera:=zed|rs1|rs2, scene_updater_fixed;
 - ik_solver (ur_ik_solver), collision_checker_server, parallel_multigoal_planner;
-- time_parametrization (compute_joint_trajectory).
+- time_parametrization (apply_time_parametrization), unless start_time_parametrization:=false
+  (e.g. when surface_path_planning already runs one).
 vgn_grasp_server runs in its own environment (see README.md).
 """
 
@@ -91,9 +92,10 @@ def _setup(context):
     time_parametrization = Node(
         package='time_parametrization',
         executable='apply_time_parametrization_server',
-        name='compute_joint_trajectory',
+        name='apply_time_parametrization',
         output='screen',
         parameters=model + [joint_limits, os.path.join(config, 'time_parametrization.yaml')],
+        condition=IfCondition(LaunchConfiguration('start_time_parametrization')),
     )
 
     # --- Perception
@@ -154,5 +156,7 @@ def generate_launch_description():
         DeclareLaunchArgument('fixed_camera', default_value='',
                               description='zed, rs1 or rs2: also an updater on that camera'),
         DeclareLaunchArgument('database_file', default_value='~/.ros/scene_db_picking.sqlite'),
+        DeclareLaunchArgument('start_time_parametrization', default_value='true',
+                              description='Start apply_time_parametrization (false if it is already running)'),
         OpaqueFunction(function=_setup),
     ])

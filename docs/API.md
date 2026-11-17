@@ -21,7 +21,7 @@ Nodes of other packages started by the launch files:
 | `ur_ik_solver` | `ik_solver` / `ur_ik_solver` | `services.launch.py` |
 | `ik_collision_check` | `collision_check_server` | `services.launch.py` |
 | `parallel_multigoal_planner` | `parallel_multigoal_planner` | `services.launch.py` |
-| `compute_joint_trajectory` | `time_parametrization` | `services.launch.py` |
+| `apply_time_parametrization` | `time_parametrization` | `services.launch.py` |
 | `vgn_grasp_server` | `vgn_grasp_server` (robostack) | its own launch file, `config/vgn.yaml` |
 
 ---
@@ -62,7 +62,7 @@ where the name ends with `_deg`.
 |---|---|---|
 | `ik_solver_ns` | `ur_ik_solver` | Namespace of the IK services (= planner IK) |
 | `planner_action` | `/parallel_multigoal_plan` | |
-| `time_parametrization_action` | `/compute_joint_trajectory` | |
+| `time_parametrization_action` | `/apply_time_parametrization` | |
 | `trajectory_action` | `/joint_trajectory_controller/follow_joint_trajectory` | |
 | `gripper_action` | `/robotiq_gripper_controller/gripper_cmd` | |
 | `apply_planning_scene_service` | `/apply_planning_scene` | |
@@ -235,5 +235,5 @@ of `config/objects.yaml`; this node drives them.
 | `config/ik_solver.yaml` | `ur_ik_solver` (cnr_param) |
 | `config/mirrt_star.yaml` | `parallel_multigoal_planner` (cnr_param) |
 | `config/collision_checker.yaml` | `ik_collision_check` |
-| `config/time_parametrization.yaml` | `compute_joint_trajectory` |
+| `config/time_parametrization.yaml` | `apply_time_parametrization` |
 | `rviz/picking.rviz` | RViz |

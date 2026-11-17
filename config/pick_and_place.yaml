@@ -4,7 +4,7 @@ pick_and_place:
     use_sim_time: true
     ik_solver_ns: ur_ik_solver
     planner_action: /parallel_multigoal_plan
-    time_parametrization_action: /compute_joint_trajectory
+    time_parametrization_action: /apply_time_parametrization
     trajectory_action: /joint_trajectory_controller/follow_joint_trajectory
     gripper_action: /robotiq_gripper_controller/gripper_cmd
     scene_db: /scene_db

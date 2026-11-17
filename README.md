@@ -17,7 +17,7 @@ Nodes, parameters, interfaces, conventions: [docs/API.md](docs/API.md).
  ├ DetachableJoint per object                     capture_view,           (robostack env)
  └ sim_grasp_manager ◀── /joint_states            acquire_grasps) ──▶ scene_db
                                                  ur_ik_solver ◀─ parallel_multigoal_planner ─▶ collision_checker_server
-                                                 compute_joint_trajectory (TOTG)                  (move_group scene)
+                                                 apply_time_parametrization (TOTG)                (move_group scene)
  pick_and_place ── services / actions above ──▶ joint_trajectory_controller, robotiq_gripper_controller
 ```
 
@@ -126,7 +126,7 @@ Useful while it runs: `ros2 run scene_db cli list`. The RViz of
 | File | Arguments |
 |---|---|
 | `sim.launch.py` | `gui`, `rviz`, `rviz_config`, `sim_cameras`, `world`, `description_file` |
-| `services.launch.py` | `description_file`, `detector` (`true`), `fixed_camera` (`''`, or `zed`, `rs1`, `rs2`), `database_file` |
+| `services.launch.py` | `description_file`, `detector` (`true`), `fixed_camera` (`''`, or `zed`, `rs1`, `rs2`), `database_file`, `start_time_parametrization` (`true`; `false` if `apply_time_parametrization` is already running, e.g. started by `surface_path_planning`) |
 | `pick_and_place.launch.py` | `params_file` |
 
 `sim.launch.py` uses the `description_file` argument of

@@ -1,7 +1,7 @@
 # Time parametrization (MoveIt TOTG) of the paths of parallel_multigoal_planner.
-compute_joint_trajectory:
+apply_time_parametrization:
   ros__parameters:
-    action_name: compute_joint_trajectory    # i.e. /compute_joint_trajectory
+    action_name: apply_time_parametrization  # i.e. /apply_time_parametrization
     robot_description_param: robot_description
     default_group_name: ur_robot
     use_sim_time: true

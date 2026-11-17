@@ -28,7 +28,7 @@ Each cycle:
 5. place: plan to the basket (several yaws), open the gripper, retreat, remove the
    object from scene_db.
 
-Motions: parallel_multigoal_planner (path) -> compute_joint_trajectory (TOTG) ->
+Motions: parallel_multigoal_planner (path) -> apply_time_parametrization (TOTG) ->
 joint_trajectory_controller. Cartesian goals are ur10e_tool0 poses in
 ur10e_base_link (the frames of the ik_solver configuration).
 """
@@ -90,7 +90,7 @@ class PickAndPlace(Node):
             # ROS interfaces
             'ik_solver_ns': 'ur_ik_solver',
             'planner_action': '/parallel_multigoal_plan',
-            'time_parametrization_action': '/compute_joint_trajectory',
+            'time_parametrization_action': '/apply_time_parametrization',
             'trajectory_action': '/joint_trajectory_controller/follow_joint_trajectory',
             'gripper_action': '/robotiq_gripper_controller/gripper_cmd',
             'apply_planning_scene_service': '/apply_planning_scene',
