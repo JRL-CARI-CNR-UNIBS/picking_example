@@ -38,7 +38,7 @@ import threading
 import time
 from typing import List, Optional
 
-from control_msgs.action import FollowJointTrajectory, ParallelGripperCommand
+from control_msgs.action import FollowJointTrajectory, GripperCommand, ParallelGripperCommand
 from geometry_msgs.msg import Point, Pose, Quaternion
 from geometry_msgs.msg import PoseStamped
 from ik_solver_msgs.msg import Configuration
@@ -93,6 +93,10 @@ class PickAndPlace(Node):
             'time_parametrization_action': '/apply_time_parametrization',
             'trajectory_action': '/joint_trajectory_controller/follow_joint_trajectory',
             'gripper_action': '/robotiq_gripper_controller/gripper_cmd',
+            # Action type of gripper_action: 'parallel' = control_msgs/ParallelGripperCommand
+            # (robotiq_controllers/GripperActionController, Gazebo), 'gripper_command' =
+            # control_msgs/GripperCommand (position_controllers/GripperActionController).
+            'gripper_action_type': 'parallel',
             'apply_planning_scene_service': '/apply_planning_scene',
             'collision_check_service': '/collision_check',   # only to explain IK failures
             'scene_db': '/scene_db',
@@ -111,6 +115,7 @@ class PickAndPlace(Node):
             'gripper_open': 0.0,
             'gripper_closed': 0.7929,
             'gripper_timeout': 5.0,
+            'gripper_max_effort': 0.0,              # [N] goal effort; 0 = controller default
             'touch_links': [''],
             'planning_time': 5.0,
             'velocity_scaling': 0.5,
@@ -202,8 +207,8 @@ class PickAndPlace(Node):
                                  p['time_parametrization_action'], callback_group=cb),
             'traj': ActionClient(self, FollowJointTrajectory, p['trajectory_action'],
                                  callback_group=cb),
-            'gripper': ActionClient(self, ParallelGripperCommand, p['gripper_action'],
-                                    callback_group=cb),
+            'gripper': ActionClient(self, self._gripper_action_type(p['gripper_action_type']),
+                                    p['gripper_action'], callback_group=cb),
         }
         self._joint_names: List[str] = []
         self._scene_ids = set()        # object boxes in the MoveIt scene
@@ -383,10 +388,25 @@ class PickAndPlace(Node):
         t[:3, 3] += np.asarray(offset, dtype=float)
         self._move_tcp([t], what, slow=True)
 
+    @staticmethod
+    def _gripper_action_type(name: str):
+        types = {'parallel': ParallelGripperCommand, 'gripper_command': GripperCommand}
+        if name not in types:
+            raise ValueError(f"gripper_action_type '{name}': use one of {sorted(types)}")
+        return types[name]
+
     def _gripper(self, position: float, what: str) -> bool:
-        goal = ParallelGripperCommand.Goal()
-        goal.command.name = [self._p['gripper_joint']]
-        goal.command.position = [float(position)]
+        effort = float(self._p['gripper_max_effort'])
+        if self._p['gripper_action_type'] == 'gripper_command':
+            goal = GripperCommand.Goal()
+            goal.command.position = float(position)
+            goal.command.max_effort = effort
+        else:
+            goal = ParallelGripperCommand.Goal()
+            goal.command.name = [self._p['gripper_joint']]
+            goal.command.position = [float(position)]
+            if effort > 0.0:
+                goal.command.effort = [effort]
         try:
             status, res = self._action('gripper', goal, self._p['gripper_timeout'])
         except TaskError as e:
