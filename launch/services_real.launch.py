@@ -108,11 +108,15 @@ def _setup(context):
         condition=IfCondition(LaunchConfiguration('detector')),
     )
     scene_params = os.path.join(config, 'scene.yaml')
+    # scene_db uses scipy: on Ubuntu 22.04 a newer scipy in ~/.local can break with the
+    # system numpy; take the system python3-scipy instead.
+    system_python = {'PYTHONNOUSERSITE': '1'}
     scene_db = Node(
         package='scene_db',
         executable='scene_db_node',
         name='scene_db',
         output='screen',
+        additional_env=system_python,
         parameters=[scene_params, no_sim_time,
                     {'database_file': LaunchConfiguration('database_file'),
                      'reset_on_start': True}],
@@ -122,6 +126,7 @@ def _setup(context):
         executable='scene_updater',
         name='scene_updater_wrist',
         output='screen',
+        additional_env=system_python,
         parameters=[scene_params, no_sim_time],
         remappings=[('color/image_raw', '/wrist/color/image_raw'),
                     ('depth/image_raw', '/wrist/aligned_depth_to_color/image_raw'),
@@ -137,6 +142,7 @@ def _setup(context):
             executable='scene_updater',
             name='scene_updater_fixed',
             output='screen',
+            additional_env=system_python,
             parameters=[scene_params, no_sim_time],
             remappings=[('color/image_raw', f'/{fixed}/color/image_raw'),
                         ('depth/image_raw', f'/{fixed}/depth/image_rect_raw'),
