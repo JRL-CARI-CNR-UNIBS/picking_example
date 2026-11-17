@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>picking_example</name>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <description>Pick and place example in the Sharework cell (Gazebo): YOLO detection, scene_db, VGN grasps, parallel_multigoal_planner, place in a basket.</description>
   <maintainer email="manuel.beschi@unibs.it">manuel beschi</maintainer>
   <license>Apache-2.0</license>

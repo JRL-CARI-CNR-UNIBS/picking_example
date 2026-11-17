@@ -2,6 +2,22 @@
 Changelog for package picking_example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.0 (2026-11-17)
+------------------
+* Real Sharework cell (ROS 2 Humble), without Gazebo:
+  ``sharework_cembre_bringup`` replaces ``sim.launch.py``.
+* ``services_real.launch.py``: model of ``sharework_cembre_description`` /
+  ``sharework_cembre_moveit_config``, no simulated time, detector started
+  separately (``detector:=false``), ``scene_db`` nodes with the system scipy
+  (``PYTHONNOUSERSITE=1``).
+* ``config/real``: ``pick_and_place`` (``scaled_fjt_controller``,
+  ``robotiq_action_controller``, low speeds, one cycle; geometry of the Gazebo
+  world, to be measured), ``detector``, ``vgn``.
+* ``pick_and_place``: ``gripper_action_type`` (``parallel`` =
+  ``control_msgs/ParallelGripperCommand``, ``gripper_command`` =
+  ``control_msgs/GripperCommand``) and ``gripper_max_effort``.
+* README: real cell section. LICENSE and CONTRIBUTING.
+
 0.1.0 (2026-11-03)
 ------------------
 * First version: pick and place in the Sharework cell, in Gazebo.
