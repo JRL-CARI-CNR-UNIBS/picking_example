@@ -5,7 +5,7 @@ pick_and_place:
     ik_solver_ns: ur_ik_solver
     planner_action: /parallel_multigoal_plan
     time_parametrization_action: /apply_time_parametrization
-    trajectory_action: /joint_trajectory_controller/follow_joint_trajectory
+    trajectory_action: /scaled_fjt_controller/follow_joint_trajectory
     gripper_action: /robotiq_gripper_controller/gripper_cmd
     scene_db: /scene_db
     collision_check_service: /collision_check   # only to explain IK failures in the log
@@ -19,9 +19,9 @@ pick_and_place:
     camera_frame: wrist_color_optical_frame
 
     planning_time: 5.0                # [s] per request
-    velocity_scaling: 0.5
+    velocity_scaling: 0.1
     acceleration_scaling: 0.5
-    approach_velocity_scaling: 0.1    # approach, lift, retreat
+    approach_velocity_scaling: 0.01    # approach, lift, retreat
 
     # Observation: wrist camera at (x, y, z) looking at (x, y, z), 6 values per point.
     # Oblique views from the robot side: YOLO (COCO) does not recognize cups from
