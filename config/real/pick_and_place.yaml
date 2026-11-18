@@ -12,7 +12,7 @@ pick_and_place:
     trajectory_action: /scaled_fjt_controller/follow_joint_trajectory   # active controller of the bringup
     gripper_action: /robotiq_action_controller/gripper_cmd
     gripper_action_type: gripper_command   # control_msgs/GripperCommand (position_controllers/GripperActionController)
-    gripper_max_effort: 10.0               # [N] as max_effort of robotiq_action_controller
+    gripper_max_effort: 0.0                # ignored by position_controllers/GripperActionController: the force is gripper_force_multiplier of robotiq_socket_driver
     scene_db: /scene_db
     collision_check_service: /collision_check   # only to explain IK failures in the log
     wrist_updater: /scene_updater_wrist

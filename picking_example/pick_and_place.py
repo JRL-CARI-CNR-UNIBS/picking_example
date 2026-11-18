@@ -71,6 +71,14 @@ class TaskError(RuntimeError):
     """A step failed: the current object is skipped."""
 
 
+class PlanningError(TaskError):
+    """The planner failed, with a MoveItErrorCodes value."""
+
+    def __init__(self, message: str, code: int):  # noqa: D107
+        super().__init__(message)
+        self.code = code
+
+
 def _pose_msg(t: np.ndarray) -> Pose:
     q = g.matrix_to_quat(t[:3, :3])
     return Pose(position=Point(x=float(t[0, 3]), y=float(t[1, 3]), z=float(t[2, 3])),
@@ -115,7 +123,9 @@ class PickAndPlace(Node):
             'gripper_open': 0.0,
             'gripper_closed': 0.7929,
             'gripper_timeout': 5.0,
-            'gripper_max_effort': 0.0,              # [N] goal effort; 0 = controller default
+            # [N] goal effort (parallel: 0 = not sent). position_controllers/
+            # GripperActionController ignores it: the force is the one of the driver.
+            'gripper_max_effort': 0.0,
             'touch_links': [''],
             'planning_time': 5.0,
             'velocity_scaling': 0.5,
@@ -162,7 +172,7 @@ class PickAndPlace(Node):
         if p['touch_links'] == ['']:
             p['touch_links'] = [
                 'ur10e_tool0', 'ur10e_wrist_3_link', 'robotiq_coupler', 'wrist_link',
-                'wrist_camera_support',
+                'wrist_camera_support', 'rq_connector',
                 'ur10e_robotiq_85_base_link',
                 'ur10e_robotiq_85_left_knuckle_link', 'ur10e_robotiq_85_right_knuckle_link',
                 'ur10e_robotiq_85_left_inner_knuckle_link',
@@ -213,6 +223,7 @@ class PickAndPlace(Node):
         self._joint_names: List[str] = []
         self._scene_ids = set()        # object boxes in the MoveIt scene
         self._search_box = False       # search_box in the MoveIt scene
+        self._attached = False         # held_object attached to the robot in MoveIt
         self._attempts = {}            # object id -> failed attempts
         self.log = self.get_logger()
 
@@ -279,7 +290,8 @@ class PickAndPlace(Node):
         status, result = self._action('plan', goal, self._p['planning_time'] + 60.0)
         code = result.motion_plan_response.error_code.val
         if code != MoveItErrorCodes.SUCCESS:
-            raise TaskError(f'Planning {what} failed (error code {code}, {len(goals)} goals)')
+            raise PlanningError(f'Planning {what} failed (error code {code}, {len(goals)} goals)',
+                                code)
         return result.motion_plan_response
 
     def _execute(self, plan, velocity_scaling: float, what: str):
@@ -329,6 +341,32 @@ class PickAndPlace(Node):
             return
         self._move([self._joint_goal(home)], 'home')
 
+    def _collision_pairs(self, configurations, joint_names) -> dict:
+        """Count of the configurations by colliding pairs ('feasible' when free)."""
+        res = self._call('collision', CollisionChecking.Request(
+            solutions=configurations, joint_names=joint_names, detailed=True), 20.0)
+        pairs = {}
+        for r in res.result:
+            if r.out_of_bound:
+                key = 'out of bounds: ' + ', '.join(r.out_of_bound_links)
+            elif r.feasibility < 1.0:
+                key = ', '.join(sorted({f'{a}-{b}' for a, b in zip(r.colliding_obj_first,
+                                                                  r.colliding_obj_second)}))
+            else:
+                key = 'feasible'
+            pairs[key] = pairs.get(key, 0) + 1
+        return pairs
+
+    def _explain_start(self):
+        """Log what the current robot state collides with."""
+        try:
+            pairs = self._collision_pairs([Configuration(configuration=self._current_joints())],
+                                          list(self._joint_names))
+        except TaskError as e:
+            self.log.warn(f'  cannot explain: {e}')
+            return
+        self.log.warn(f'  start state: {pairs}')
+
     def _explain_no_ik(self, goal: Constraints):
         """Log why a Cartesian goal has no valid IK solution (bounds or colliding links)."""
         if not goal.position_constraints:
@@ -346,30 +384,21 @@ class PickAndPlace(Node):
             if not sol.solution.configurations:
                 self.log.warn('  no IK solution at all: pose out of reach')
                 return
-            res = self._call('collision', CollisionChecking.Request(
-                solutions=sol.solution.configurations, joint_names=sol.joint_names,
-                detailed=True), 20.0)
+            pairs = self._collision_pairs(sol.solution.configurations, sol.joint_names)
         except TaskError as e:
             self.log.warn(f'  cannot explain: {e}')
             return
-        pairs = {}
-        for r in res.result:
-            if r.out_of_bound:
-                key = 'out of bounds: ' + ', '.join(r.out_of_bound_links)
-            elif r.feasibility < 1.0:
-                key = ', '.join(sorted({f'{a}-{b}' for a, b in zip(r.colliding_obj_first,
-                                                                  r.colliding_obj_second)}))
-            else:
-                key = 'feasible'
-            pairs[key] = pairs.get(key, 0) + 1
         self.log.warn(f'  IK solutions of the first goal: {pairs}')
 
     def _move(self, goals: List[Constraints], what: str, slow: bool = False):
         self.log.info(f'Moving: {what} ({len(goals)} alternative goals)')
         try:
             plan = self._plan(goals, what)
-        except TaskError:
-            self._explain_no_ik(goals[0])
+        except PlanningError as e:
+            if e.code == MoveItErrorCodes.START_STATE_IN_COLLISION:
+                self._explain_start()
+            else:
+                self._explain_no_ik(goals[0])
             raise
         self._execute(plan, self._p['approach_velocity_scaling'] if slow
                       else self._p['velocity_scaling'], what)
@@ -395,7 +424,7 @@ class PickAndPlace(Node):
             raise ValueError(f"gripper_action_type '{name}': use one of {sorted(types)}")
         return types[name]
 
-    def _gripper(self, position: float, what: str) -> bool:
+    def _gripper(self, position: float, what: str):
         effort = float(self._p['gripper_max_effort'])
         if self._p['gripper_action_type'] == 'gripper_command':
             goal = GripperCommand.Goal()
@@ -408,12 +437,10 @@ class PickAndPlace(Node):
             if effort > 0.0:
                 goal.command.effort = [effort]
         try:
-            status, res = self._action('gripper', goal, self._p['gripper_timeout'])
+            _, res = self._action('gripper', goal, self._p['gripper_timeout'])
         except TaskError as e:
-            self.log.warn(f'Gripper {what}: {e}')
-            return False
+            raise TaskError(f'Gripper {what}: {e}')
         self.log.info(f'Gripper {what}: reached_goal={res.reached_goal} stalled={res.stalled}')
-        return True
 
     # ============================================================ planning scene
     def _remove_msg(self, oid: str) -> CollisionObject:
@@ -509,6 +536,7 @@ class PickAndPlace(Node):
         scene = PlanningScene()
         scene.robot_state.attached_collision_objects = [aco]
         self._apply_scene(scene)
+        self._attached = True
 
     def _detach(self):
         aco = AttachedCollisionObject()
@@ -519,6 +547,7 @@ class PickAndPlace(Node):
         # A detached object goes back to the world: remove it there too.
         scene.world.collision_objects = [self._remove_msg('held_object')]
         self._apply_scene(scene)
+        self._attached = False
 
     # =============================================================== perception
     def _query(self, **filters):
@@ -668,14 +697,17 @@ class PickAndPlace(Node):
         objs = [o for o in objs if self._attempts.get(o.id, 0) < p['max_attempts_per_object']]
         return objs[0] if objs else None
 
-    def _recover(self, held: bool):
+    def _recover(self):
         """After a failure: release what is held, back to home."""
-        if held:
+        try:
             self._gripper(self._p['gripper_open'], 'open')
+        except TaskError as e:
+            self.log.warn(str(e))
+        if self._attached:
             try:
                 self._detach()
-            except TaskError:
-                pass
+            except TaskError as e:
+                self.log.warn(f'Detach: {e}')
         self._set_search_box(False)      # the TCP may be inside it
         try:
             self._translate_tcp((0.0, 0.0, self._p['retreat_height']), 'retreat')
@@ -714,12 +746,9 @@ class PickAndPlace(Node):
             self.log.info(f'Picking {obj.id} ({obj.class_name}, {obj.color}) at '
                           f'({obj.pose.position.x:.3f}, {obj.pose.position.y:.3f}, '
                           f'{obj.pose.position.z:.3f})')
-            held = False
             try:
                 obj, tcp_grasp, same = self._pick(obj)
-                held = True
                 self._place(obj, tcp_grasp)
-                held = False
                 for oid in same:
                     self._call('remove', RemoveObject.Request(object_id=oid), 10.0, check=False)
                 placed.append(obj.id)
@@ -727,7 +756,8 @@ class PickAndPlace(Node):
             except TaskError as e:
                 self._attempts[obj.id] = self._attempts.get(obj.id, 0) + 1
                 self.log.error(f'{obj.id}: {e} (attempt {self._attempts[obj.id]})')
-                self._recover(held)
+                held = self._attached
+                self._recover()
                 if held:      # dropped somewhere: the next observation finds it again
                     self._call('remove', RemoveObject.Request(object_id=obj.id), 10.0,
                                check=False)
