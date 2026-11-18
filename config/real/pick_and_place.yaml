@@ -23,6 +23,8 @@ pick_and_place:
     flange_frame: ur10e_tool0         # = ik_solver tool_frame
     tcp_frame: open_tip
     camera_frame: wrist_color_optical_frame
+    # The held object may touch the table (a link of the real cell model) when it is grasped.
+    extra_touch_links: [bigger_table]
 
     planning_time: 5.0                # [s] per request
     velocity_scaling: 0.1               # sim: 0.5

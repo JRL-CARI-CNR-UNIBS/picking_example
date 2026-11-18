@@ -126,7 +126,9 @@ class PickAndPlace(Node):
             # [N] goal effort (parallel: 0 = not sent). position_controllers/
             # GripperActionController ignores it: the force is the one of the driver.
             'gripper_max_effort': 0.0,
-            'touch_links': [''],
+            'touch_links': [''],                    # [''] = the gripper links below
+            # Added to touch_links, e.g. the support when it is a robot link (real cell).
+            'extra_touch_links': [''],
             'planning_time': 5.0,
             'velocity_scaling': 0.5,
             'acceleration_scaling': 0.5,
@@ -532,7 +534,8 @@ class PickAndPlace(Node):
         aco = AttachedCollisionObject()
         aco.link_name = self._p['flange_frame']
         aco.object = self._object_box(obj, 'held_object', bottom_gap=0.02)
-        aco.touch_links = list(self._p['touch_links'])
+        aco.touch_links = list(self._p['touch_links']) + \
+            [link for link in self._p['extra_touch_links'] if link]
         scene = PlanningScene()
         scene.robot_state.attached_collision_objects = [aco]
         self._apply_scene(scene)
